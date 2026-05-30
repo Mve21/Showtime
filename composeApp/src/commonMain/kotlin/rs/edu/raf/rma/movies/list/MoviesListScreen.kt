@@ -1,6 +1,7 @@
 package rs.edu.raf.rma.movies.list
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -42,9 +44,21 @@ import rs.edu.raf.rma.movies.domain.Movie
 
 @Composable
 fun MoviesListScreen(
+    onMovieClick: (String) -> Unit,
     viewModel: MoviesListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.sideEffects.collect { sideEffect ->
+            when (sideEffect) {
+                is MoviesListContract.SideEffect.NavigateToDetail -> {
+                    onMovieClick(sideEffect.imdbId)
+                }
+            }
+        }
+    }
+
     MoviesListContent(
         state = state,
         eventPublisher = viewModel::setEvent,
@@ -92,7 +106,14 @@ private fun MoviesListContent(
                             items = state.movies,
                             key = { it.imdbId },
                         ) { movie ->
-                            MovieCard(movie = movie)
+                            MovieCard(
+                                movie = movie,
+                                onClick = {
+                                    eventPublisher(
+                                        MoviesListContract.UiEvent.MovieClicked(movie.imdbId)
+                                    )
+                                },
+                            )
                         }
                     }
                 }
@@ -102,11 +123,12 @@ private fun MoviesListContent(
 }
 
 @Composable
-private fun MovieCard(movie: Movie) {
+private fun MovieCard(movie: Movie, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(2f / 3f),
+            .aspectRatio(2f / 3f)
+            .clickable { onClick() },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(

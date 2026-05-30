@@ -30,7 +30,7 @@ data class CollectionSummaryApiModel(
 @Serializable
 data class MovieApiModel(
     val imdbId: String,
-    val tmdbId: String? = null,
+    val tmdbId: Int? = null,
     val title: String,
     val originalTitle: String? = null,
     val overview: String? = null,

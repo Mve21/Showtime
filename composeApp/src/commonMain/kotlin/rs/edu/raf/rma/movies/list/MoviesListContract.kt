@@ -12,5 +12,10 @@ interface MoviesListContract {
 
     sealed class UiEvent {
         data object Refresh : UiEvent()
+        data class MovieClicked(val imdbId: String) : UiEvent()
+    }
+
+    sealed class SideEffect {
+        data class NavigateToDetail(val imdbId: String) : SideEffect()
     }
 }

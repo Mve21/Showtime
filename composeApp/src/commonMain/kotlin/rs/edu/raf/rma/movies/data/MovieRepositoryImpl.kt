@@ -9,10 +9,11 @@ import rs.edu.raf.rma.movies.domain.Genre
 import rs.edu.raf.rma.movies.domain.Movie
 import rs.edu.raf.rma.movies.domain.MovieDetail
 import rs.edu.raf.rma.movies.domain.MovieRepository
+import rs.edu.raf.rma.networking.MoviesApi
 
 class MovieRepositoryImpl(
     private val appDatabase: AppDatabase,
-    private val moviesApi: rs.edu.raf.rma.networking.MoviesApi,
+    private val moviesApi: MoviesApi,
 ) : MovieRepository {
 
     private val dao = appDatabase.movieDao()
@@ -52,9 +53,6 @@ class MovieRepositoryImpl(
         val items = response.items
         dao.upsertGenres(items.flatMap { it.toGenreEntities() }.distinctBy { it.id })
         dao.refreshMovieListTransaction(items.map { it.toMovieEntity() })
-        items.firstOrNull()?.let {
-            println("DEBUG posterPath: ${it.posterPath}")
-        }
         items.forEach { item ->
             dao.replaceMovieGenreLinks(
                 movieId = item.imdbId,
@@ -62,7 +60,6 @@ class MovieRepositoryImpl(
             )
         }
     }
-
 
     override fun observeMovieDetail(imdbId: String): Flow<MovieDetail?> =
         combine(
@@ -108,8 +105,6 @@ class MovieRepositoryImpl(
     override suspend fun addFavorite(imdbId: String) = Unit
 
     override suspend fun removeFavorite(imdbId: String) = Unit
-
-    // --- Watchlist (requires auth — stubbed until Faza 2) ---
 
     override fun observeWatchlist(): Flow<List<Movie>> =
         dao.observeWatchlistMovies()

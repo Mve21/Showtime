@@ -1,7 +1,9 @@
-package rs.edu.raf.rma.movies.list
+package rs.edu.raf.rma.movies.details
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,29 +14,32 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import rs.edu.raf.rma.movies.domain.MovieRepository
 
-class MoviesListViewModel(
+class MovieDetailViewModel(
+    savedStateHandle: SavedStateHandle,
     private val movieRepository: MovieRepository,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(MoviesListContract.UiState())
+    private val imdbId: String = checkNotNull(savedStateHandle["imdbId"])
+
+    private val _state = MutableStateFlow(MovieDetailContract.UiState())
     val state = _state.asStateFlow()
 
-    private fun setState(reducer: MoviesListContract.UiState.() -> MoviesListContract.UiState) {
+    private fun setState(reducer: MovieDetailContract.UiState.() -> MovieDetailContract.UiState) {
         _state.getAndUpdate(reducer)
     }
 
-    private val events = MutableSharedFlow<MoviesListContract.UiEvent>()
+    private val events = MutableSharedFlow<MovieDetailContract.UiEvent>()
 
-    fun setEvent(event: MoviesListContract.UiEvent) {
+    fun setEvent(event: MovieDetailContract.UiEvent) {
         viewModelScope.launch { events.emit(event) }
     }
 
-    private val _sideEffects = Channel<MoviesListContract.SideEffect>()
+    private val _sideEffects = Channel<MovieDetailContract.SideEffect>()
     val sideEffects = _sideEffects.receiveAsFlow()
 
     init {
         observeEvents()
-        observeMovies()
+        observeMovieDetail()
         refresh()
     }
 
@@ -42,23 +47,21 @@ class MoviesListViewModel(
         viewModelScope.launch {
             events.collect { event ->
                 when (event) {
-                    MoviesListContract.UiEvent.Refresh -> refresh()
-                    is MoviesListContract.UiEvent.MovieClicked -> {
-                        _sideEffects.send(
-                            MoviesListContract.SideEffect.NavigateToDetail(event.imdbId)
-                        )
+                    MovieDetailContract.UiEvent.Refresh -> refresh()
+                    MovieDetailContract.UiEvent.BackClicked -> {
+                        _sideEffects.send(MovieDetailContract.SideEffect.NavigateBack)
                     }
                 }
             }
         }
     }
 
-    private fun observeMovies() {
+    private fun observeMovieDetail() {
         viewModelScope.launch {
-            movieRepository.observeMovies()
+            movieRepository.observeMovieDetail(imdbId)
                 .distinctUntilChanged()
-                .collect { movies ->
-                    setState { copy(movies = movies, error = null) }
+                .collect { detail ->
+                    setState { copy(movieDetail = detail, error = null) }
                 }
         }
     }
@@ -67,9 +70,10 @@ class MoviesListViewModel(
         viewModelScope.launch {
             setState { copy(isLoading = true) }
             try {
-                movieRepository.refreshMovies()
+                movieRepository.refreshMovieDetail(imdbId)
             } catch (e: Exception) {
-                setState { copy(error = e.message ?: "Greška pri učitavanju filmova") }
+                Napier.e("refreshMovieDetail failed for $imdbId", e)
+                setState { copy(error = e.message ?: "Greška pri učitavanju filma") }
             } finally {
                 setState { copy(isLoading = false) }
             }

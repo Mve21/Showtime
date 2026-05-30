@@ -57,7 +57,7 @@ fun MovieApiModel.toMovieEntity(): MovieEntity = MovieEntity(
 
 fun MovieApiModel.toMovieDetailEntity(): MovieDetailEntity = MovieDetailEntity(
     imdbId = imdbId,
-    tmdbId = tmdbId,
+    tmdbId = tmdbId?.toString(),
     originalTitle = originalTitle,
     overview = overview,
     tagline = tagline,
