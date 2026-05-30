@@ -16,7 +16,7 @@ val networkingModule = module {
     single<MoviesApi> {
         Ktorfit.Builder()
             .httpClient(get<HttpClient>())
-            .baseUrl("https://rma.finlab.rs/movies/")
+            .baseUrl("https://rma.finlab.rs/")
             .build()
             .createMoviesApi()
     }

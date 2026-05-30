@@ -18,7 +18,7 @@ import rs.edu.raf.rma.networking.model.GenreApiModel
 import rs.edu.raf.rma.networking.model.MovieApiModel
 import rs.edu.raf.rma.networking.model.MovieListItemApiModel
 import rs.edu.raf.rma.networking.model.PersonSummaryApiModel
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 
 fun MovieListItemApiModel.toMovieEntity(): MovieEntity = MovieEntity(
@@ -38,12 +38,12 @@ fun MovieListItemApiModel.toMovieGenreLinks(): List<MovieGenreCrossRef> =
 
 fun MovieListItemApiModel.toFavoriteEntity(): FavoriteEntity = FavoriteEntity(
     movieId = imdbId,
-    addedAt = Clock.System.currentTimeMillis(),
+    addedAt = kotlin.time.Clock.System.now().toEpochMilliseconds(),
 )
 
 fun MovieListItemApiModel.toWatchlistEntity(): WatchlistEntity = WatchlistEntity(
     movieId = imdbId,
-    addedAt = Clock.System.currentTimeMillis(),
+    addedAt = kotlin.time.Clock.System.now().toEpochMilliseconds(),
 )
 
 fun MovieApiModel.toMovieEntity(): MovieEntity = MovieEntity(
