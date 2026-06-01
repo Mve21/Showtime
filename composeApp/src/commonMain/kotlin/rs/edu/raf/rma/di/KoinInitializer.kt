@@ -7,6 +7,7 @@ import rs.edu.raf.rma.core.auth.di.authModule
 import rs.edu.raf.rma.core.db.di.databaseModule
 import rs.edu.raf.rma.movies.di.moviesModule
 import rs.edu.raf.rma.networking.di.networkingModule
+import rs.edu.raf.rma.splash.di.splashModule
 
 fun initKoin(config: KoinAppDeclaration? = null): KoinApplication {
     return startKoin {
@@ -16,6 +17,7 @@ fun initKoin(config: KoinAppDeclaration? = null): KoinApplication {
             authModule,
             networkingModule,
             moviesModule,
+            splashModule,
         )
     }
 }
