@@ -73,22 +73,22 @@ interface MoviesApi {
     @GET("me/favorites")
     suspend fun getFavorites(): List<MovieListItemApiModel>
 
-    @POST("me/favorites")
-    suspend fun addFavorite(@Body body: MovieIdBody)
+    @POST("me/favorites/{movieId}")
+    suspend fun addFavorite(@Path("movieId") movieId: String)
 
-    @DELETE("me/favorites/{imdbId}")
-    suspend fun removeFavorite(@Path("imdbId") imdbId: String)
+    @DELETE("me/favorites/{movieId}")
+    suspend fun removeFavorite(@Path("movieId") movieId: String)
 
     // --- Watchlist ---
 
     @GET("me/watchlist")
     suspend fun getWatchlist(): List<MovieListItemApiModel>
 
-    @POST("me/watchlist")
-    suspend fun addToWatchlist(@Body body: MovieIdBody)
+    @POST("me/watchlist/{movieId}")
+    suspend fun addToWatchlist(@Path("movieId") movieId: String)
 
-    @DELETE("me/watchlist/{imdbId}")
-    suspend fun removeFromWatchlist(@Path("imdbId") imdbId: String)
+    @DELETE("me/watchlist/{movieId}")
+    suspend fun removeFromWatchlist(@Path("movieId") movieId: String)
 
     // --- Leaderboard & Quiz results ---
 

@@ -3,7 +3,10 @@ package rs.edu.raf.rma.movies.data
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
+import rs.edu.raf.rma.movies.db.FavoriteEntity
 import rs.edu.raf.rma.core.db.AppDatabase
 import rs.edu.raf.rma.movies.domain.Genre
 import rs.edu.raf.rma.movies.domain.Movie
@@ -100,11 +103,36 @@ class MovieRepositoryImpl(
 
     override fun observeFavoriteCount(): Flow<Int> = dao.observeFavoriteCount()
 
-    override suspend fun syncFavorites() = Unit
+    override suspend fun syncFavorites() {
+        val serverFavorites = moviesApi.getFavorites()
+        dao.upsertMovies(serverFavorites.map { it.toMovieEntity() })
+        dao.upsertGenres(serverFavorites.flatMap { it.toGenreEntities() }.distinctBy { it.id })
+        serverFavorites.forEach { item ->
+            dao.replaceMovieGenreLinks(item.imdbId, item.genres.map { it.id })
+        }
+        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
+        dao.replaceFavorites(serverFavorites.map { FavoriteEntity(movieId = it.imdbId, addedAt = now) })
+    }
 
-    override suspend fun addFavorite(imdbId: String) = Unit
+    override suspend fun addFavorite(imdbId: String) {
+        dao.upsertFavorite(FavoriteEntity(movieId = imdbId, addedAt = kotlin.time.Clock.System.now().toEpochMilliseconds()))
+        try {
+            moviesApi.addFavorite(imdbId)
+        } catch (e: Exception) {
+            dao.deleteFavorite(imdbId)
+            throw e
+        }
+    }
 
-    override suspend fun removeFavorite(imdbId: String) = Unit
+    override suspend fun removeFavorite(imdbId: String) {
+        dao.deleteFavorite(imdbId)
+        try {
+            moviesApi.removeFavorite(imdbId)
+        } catch (e: Exception) {
+            dao.upsertFavorite(FavoriteEntity(movieId = imdbId, addedAt = kotlin.time.Clock.System.now().toEpochMilliseconds()))
+            throw e
+        }
+    }
 
     override fun observeWatchlist(): Flow<List<Movie>> =
         dao.observeWatchlistMovies()

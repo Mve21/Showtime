@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -72,6 +74,8 @@ fun MovieDetailScreen(
         viewModel.sideEffects.collect { sideEffect ->
             when (sideEffect) {
                 MovieDetailContract.SideEffect.NavigateBack -> onBackClick()
+                is MovieDetailContract.SideEffect.ShowError ->
+                    snackbarHostState.showSnackbar(sideEffect.message)
             }
         }
     }
@@ -93,6 +97,21 @@ fun MovieDetailScreen(
                             contentDescription = "Back",
                             tint = Color.White,
                         )
+                    }
+                },
+                actions = {
+                    state.movieDetail?.let { detail ->
+                        IconButton(onClick = {
+                            viewModel.setEvent(MovieDetailContract.UiEvent.ToggleFavorite)
+                        }) {
+                            Icon(
+                                imageVector = if (detail.isFavorite) Icons.Filled.Favorite
+                                              else Icons.Filled.FavoriteBorder,
+                                contentDescription = if (detail.isFavorite) "Ukloni iz omiljenih"
+                                                     else "Dodaj u omiljene",
+                                tint = if (detail.isFavorite) Color.Red else Color.White,
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

@@ -51,6 +51,7 @@ class MovieDetailViewModel(
                     MovieDetailContract.UiEvent.BackClicked -> {
                         _sideEffects.send(MovieDetailContract.SideEffect.NavigateBack)
                     }
+                    MovieDetailContract.UiEvent.ToggleFavorite -> toggleFavorite()
                 }
             }
         }
@@ -76,6 +77,24 @@ class MovieDetailViewModel(
                 setState { copy(error = e.message ?: "Greška pri učitavanju filma") }
             } finally {
                 setState { copy(isLoading = false) }
+            }
+        }
+    }
+
+    private fun toggleFavorite() {
+        val isFavorite = _state.value.movieDetail?.isFavorite ?: return
+        viewModelScope.launch {
+            try {
+                if (isFavorite) {
+                    movieRepository.removeFavorite(imdbId)
+                } else {
+                    movieRepository.addFavorite(imdbId)
+                }
+            } catch (e: Exception) {
+                Napier.e("toggleFavorite failed for $imdbId", e)
+                val message = if (isFavorite) "Greška pri uklanjanju iz omiljenih"
+                              else "Greška pri dodavanju u omiljene"
+                _sideEffects.send(MovieDetailContract.SideEffect.ShowError(message))
             }
         }
     }

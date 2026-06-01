@@ -99,11 +99,20 @@ interface MovieDao {
     @Upsert
     suspend fun upsertFavorite(favorite: FavoriteEntity)
 
+    @Upsert
+    suspend fun upsertFavorites(favorites: List<FavoriteEntity>)
+
     @Query("DELETE FROM favorites WHERE movieId = :movieId")
     suspend fun deleteFavorite(movieId: String)
 
     @Query("DELETE FROM favorites")
     suspend fun deleteAllFavorites()
+
+    @Transaction
+    suspend fun replaceFavorites(favorites: List<FavoriteEntity>) {
+        deleteAllFavorites()
+        upsertFavorites(favorites)
+    }
 
     @Upsert
     suspend fun upsertWatchlistItem(item: WatchlistEntity)
