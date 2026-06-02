@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
@@ -101,6 +103,17 @@ fun MovieDetailScreen(
                 },
                 actions = {
                     state.movieDetail?.let { detail ->
+                        IconButton(onClick = {
+                            viewModel.setEvent(MovieDetailContract.UiEvent.ToggleWatchlist)
+                        }) {
+                            Icon(
+                                imageVector = if (detail.isInWatchlist) Icons.Filled.Bookmark
+                                              else Icons.Filled.BookmarkBorder,
+                                contentDescription = if (detail.isInWatchlist) "Ukloni sa liste za gledanje"
+                                                     else "Dodaj na listu za gledanje",
+                                tint = if (detail.isInWatchlist) Color(0xFF4FC3F7) else Color.White,
+                            )
+                        }
                         IconButton(onClick = {
                             viewModel.setEvent(MovieDetailContract.UiEvent.ToggleFavorite)
                         }) {

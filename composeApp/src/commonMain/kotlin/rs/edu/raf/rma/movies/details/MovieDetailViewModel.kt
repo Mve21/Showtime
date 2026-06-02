@@ -52,6 +52,7 @@ class MovieDetailViewModel(
                         _sideEffects.send(MovieDetailContract.SideEffect.NavigateBack)
                     }
                     MovieDetailContract.UiEvent.ToggleFavorite -> toggleFavorite()
+                    MovieDetailContract.UiEvent.ToggleWatchlist -> toggleWatchlist()
                 }
             }
         }
@@ -85,15 +86,27 @@ class MovieDetailViewModel(
         val isFavorite = _state.value.movieDetail?.isFavorite ?: return
         viewModelScope.launch {
             try {
-                if (isFavorite) {
-                    movieRepository.removeFavorite(imdbId)
-                } else {
-                    movieRepository.addFavorite(imdbId)
-                }
+                if (isFavorite) movieRepository.removeFavorite(imdbId)
+                else movieRepository.addFavorite(imdbId)
             } catch (e: Exception) {
                 Napier.e("toggleFavorite failed for $imdbId", e)
                 val message = if (isFavorite) "Greška pri uklanjanju iz omiljenih"
                               else "Greška pri dodavanju u omiljene"
+                _sideEffects.send(MovieDetailContract.SideEffect.ShowError(message))
+            }
+        }
+    }
+
+    private fun toggleWatchlist() {
+        val isInWatchlist = _state.value.movieDetail?.isInWatchlist ?: return
+        viewModelScope.launch {
+            try {
+                if (isInWatchlist) movieRepository.removeFromWatchlist(imdbId)
+                else movieRepository.addToWatchlist(imdbId)
+            } catch (e: Exception) {
+                Napier.e("toggleWatchlist failed for $imdbId", e)
+                val message = if (isInWatchlist) "Greška pri uklanjanju sa liste za gledanje"
+                              else "Greška pri dodavanju na listu za gledanje"
                 _sideEffects.send(MovieDetailContract.SideEffect.ShowError(message))
             }
         }

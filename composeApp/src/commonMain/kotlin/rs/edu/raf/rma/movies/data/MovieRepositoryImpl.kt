@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import rs.edu.raf.rma.movies.db.FavoriteEntity
+import rs.edu.raf.rma.movies.db.WatchlistEntity
 import rs.edu.raf.rma.core.db.AppDatabase
 import rs.edu.raf.rma.movies.domain.Genre
 import rs.edu.raf.rma.movies.domain.Movie
@@ -141,9 +142,34 @@ class MovieRepositoryImpl(
 
     override fun observeWatchlistCount(): Flow<Int> = dao.observeWatchlistCount()
 
-    override suspend fun syncWatchlist() = Unit
+    override suspend fun syncWatchlist() {
+        val serverWatchlist = moviesApi.getWatchlist()
+        dao.upsertMovies(serverWatchlist.map { it.toMovieEntity() })
+        dao.upsertGenres(serverWatchlist.flatMap { it.toGenreEntities() }.distinctBy { it.id })
+        serverWatchlist.forEach { item ->
+            dao.replaceMovieGenreLinks(item.imdbId, item.genres.map { it.id })
+        }
+        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
+        dao.replaceWatchlist(serverWatchlist.map { WatchlistEntity(movieId = it.imdbId, addedAt = now) })
+    }
 
-    override suspend fun addToWatchlist(imdbId: String) = Unit
+    override suspend fun addToWatchlist(imdbId: String) {
+        dao.upsertWatchlistItem(WatchlistEntity(movieId = imdbId, addedAt = kotlin.time.Clock.System.now().toEpochMilliseconds()))
+        try {
+            moviesApi.addToWatchlist(imdbId)
+        } catch (e: Exception) {
+            dao.deleteWatchlistItem(imdbId)
+            throw e
+        }
+    }
 
-    override suspend fun removeFromWatchlist(imdbId: String) = Unit
+    override suspend fun removeFromWatchlist(imdbId: String) {
+        dao.deleteWatchlistItem(imdbId)
+        try {
+            moviesApi.removeFromWatchlist(imdbId)
+        } catch (e: Exception) {
+            dao.upsertWatchlistItem(WatchlistEntity(movieId = imdbId, addedAt = kotlin.time.Clock.System.now().toEpochMilliseconds()))
+            throw e
+        }
+    }
 }

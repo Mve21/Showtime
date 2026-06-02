@@ -117,11 +117,20 @@ interface MovieDao {
     @Upsert
     suspend fun upsertWatchlistItem(item: WatchlistEntity)
 
+    @Upsert
+    suspend fun upsertWatchlistItems(items: List<WatchlistEntity>)
+
     @Query("DELETE FROM watchlist WHERE movieId = :movieId")
     suspend fun deleteWatchlistItem(movieId: String)
 
     @Query("DELETE FROM watchlist")
     suspend fun deleteAllWatchlist()
+
+    @Transaction
+    suspend fun replaceWatchlist(items: List<WatchlistEntity>) {
+        deleteAllWatchlist()
+        upsertWatchlistItems(items)
+    }
 
     @Transaction
     suspend fun refreshMovieListTransaction(movies: List<MovieEntity>) {

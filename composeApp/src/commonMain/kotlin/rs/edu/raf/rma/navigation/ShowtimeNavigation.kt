@@ -1,6 +1,7 @@
 package rs.edu.raf.rma.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
@@ -25,11 +26,13 @@ import rs.edu.raf.rma.auth.signup.SignupViewModel
 import rs.edu.raf.rma.movies.details.MovieDetailScreen
 import rs.edu.raf.rma.movies.favorites.FavoritesScreen
 import rs.edu.raf.rma.movies.favorites.FavoritesViewModel
+import rs.edu.raf.rma.movies.watchlist.WatchlistScreen
+import rs.edu.raf.rma.movies.watchlist.WatchlistViewModel
 import rs.edu.raf.rma.movies.list.MoviesListScreen
 import rs.edu.raf.rma.splash.SplashScreen
 import rs.edu.raf.rma.splash.SplashViewModel
 
-private val bottomBarRoutes = setOf("movies", "favorites")
+private val bottomBarRoutes = setOf("movies", "favorites", "watchlist")
 
 @Composable
 fun ShowtimeNavigation() {
@@ -62,6 +65,17 @@ fun ShowtimeNavigation() {
                         },
                         icon = { Icon(Icons.Filled.Favorite, contentDescription = "Omiljeni") },
                         label = { Text("Omiljeni") },
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute == "watchlist",
+                        onClick = {
+                            navController.navigate("watchlist") {
+                                popUpTo("movies") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Bookmark, contentDescription = "Watchlist") },
+                        label = { Text("Watchlist") },
                     )
                 }
             }
@@ -147,6 +161,19 @@ fun ShowtimeNavigation() {
                 val viewModel = koinViewModel<FavoritesViewModel>()
                 val state by viewModel.state.collectAsState()
                 FavoritesScreen(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    sideEffect = viewModel.sideEffect,
+                    onNavigateToDetail = { imdbId ->
+                        navController.navigate("movies/$imdbId")
+                    },
+                )
+            }
+
+            composable(route = "watchlist") {
+                val viewModel = koinViewModel<WatchlistViewModel>()
+                val state by viewModel.state.collectAsState()
+                WatchlistScreen(
                     state = state,
                     onEvent = viewModel::onEvent,
                     sideEffect = viewModel.sideEffect,
