@@ -2,6 +2,7 @@ package rs.edu.raf.rma.auth
 
 import rs.edu.raf.rma.core.auth.AuthStore
 import rs.edu.raf.rma.core.auth.model.AuthData
+import rs.edu.raf.rma.core.db.AppDatabase
 import rs.edu.raf.rma.networking.MoviesApi
 import rs.edu.raf.rma.networking.model.LoginBody
 import rs.edu.raf.rma.networking.model.SignupBody
@@ -9,6 +10,7 @@ import rs.edu.raf.rma.networking.model.SignupBody
 class AuthRepositoryImpl(
     private val moviesApi: MoviesApi,
     private val authStore: AuthStore,
+    private val appDatabase: AppDatabase,
 ) : AuthRepository {
 
     override suspend fun login(username: String, password: String) {
@@ -35,5 +37,11 @@ class AuthRepositoryImpl(
                 fullName = response.user.fullName,
             )
         )
+    }
+
+    override suspend fun logout() {
+        appDatabase.movieDao().deleteAllFavorites()
+        appDatabase.movieDao().deleteAllWatchlist()
+        authStore.clearAuthData()
     }
 }

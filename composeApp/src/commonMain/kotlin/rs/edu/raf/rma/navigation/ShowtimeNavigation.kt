@@ -4,10 +4,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,11 +31,13 @@ import rs.edu.raf.rma.movies.favorites.FavoritesScreen
 import rs.edu.raf.rma.movies.favorites.FavoritesViewModel
 import rs.edu.raf.rma.movies.watchlist.WatchlistScreen
 import rs.edu.raf.rma.movies.watchlist.WatchlistViewModel
+import rs.edu.raf.rma.profile.ProfileScreen
+import rs.edu.raf.rma.profile.ProfileViewModel
 import rs.edu.raf.rma.movies.list.MoviesListScreen
 import rs.edu.raf.rma.splash.SplashScreen
 import rs.edu.raf.rma.splash.SplashViewModel
 
-private val bottomBarRoutes = setOf("movies", "favorites", "watchlist")
+private val bottomBarRoutes = setOf("movies", "favorites", "watchlist", "profile")
 
 @Composable
 fun ShowtimeNavigation() {
@@ -77,6 +82,17 @@ fun ShowtimeNavigation() {
                         icon = { Icon(Icons.Filled.Bookmark, contentDescription = "Watchlist") },
                         label = { Text("Watchlist") },
                     )
+                    NavigationBarItem(
+                        selected = currentRoute == "profile",
+                        onClick = {
+                            navController.navigate("profile") {
+                                popUpTo("movies") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profil") },
+                        label = { Text("Profil") },
+                    )
                 }
             }
         },
@@ -84,6 +100,7 @@ fun ShowtimeNavigation() {
         NavHost(
             navController = navController,
             startDestination = "splash",
+            modifier = Modifier.padding(paddingValues),
         ) {
             composable(route = "splash") {
                 val viewModel = koinViewModel<SplashViewModel>()
@@ -179,6 +196,21 @@ fun ShowtimeNavigation() {
                     sideEffect = viewModel.sideEffect,
                     onNavigateToDetail = { imdbId ->
                         navController.navigate("movies/$imdbId")
+                    },
+                )
+            }
+
+            composable(route = "profile") {
+                val viewModel = koinViewModel<ProfileViewModel>()
+                val state by viewModel.state.collectAsState()
+                ProfileScreen(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    sideEffect = viewModel.sideEffect,
+                    onNavigateToAuth = {
+                        navController.navigate("auth") {
+                            popUpTo(0) { inclusive = true }
+                        }
                     },
                 )
             }

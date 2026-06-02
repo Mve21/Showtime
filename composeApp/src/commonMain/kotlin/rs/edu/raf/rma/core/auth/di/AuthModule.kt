@@ -14,7 +14,7 @@ import rs.edu.raf.rma.core.auth.model.AuthData
 val authModule = module {
     single<DataStore<AuthData>> { createAuthDataStore() }
     single { AuthStore(persistence = get()) }
-    single<AuthRepository> { AuthRepositoryImpl(moviesApi = get(), authStore = get()) }
+    single<AuthRepository> { AuthRepositoryImpl(moviesApi = get(), authStore = get(), appDatabase = get()) }
     viewModelOf(::LoginViewModel)
     viewModelOf(::SignupViewModel)
 }
