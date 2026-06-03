@@ -83,7 +83,7 @@ class MovieRepositoryImpl(
             genres = movie.toGenreEntities(),
             genreIds = movie.genres.map { it.id },
             cast = cast.map { it.toPersonEntity() },
-            castLinks = cast.map { it.toMovieCastLink(imdbId) },
+            castLinks = cast.mapIndexed { index, person -> person.toMovieCastLink(imdbId, index) },
         )
     }
 

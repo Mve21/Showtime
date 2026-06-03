@@ -13,4 +13,5 @@ data class MovieCastCrossRef(
     val personId: String,
     val department: String?,
     val professions: String?,
+    val castOrder: Int = 0,
 )

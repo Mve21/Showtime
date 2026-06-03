@@ -19,4 +19,7 @@ interface QuizDao {
 
     @Query("SELECT COUNT(*) FROM quiz_sessions")
     fun observeTotalPlays(): Flow<Int>
+
+    @Query("SELECT * FROM quiz_sessions ORDER BY playedAt DESC LIMIT 1")
+    suspend fun getLastSession(): QuizSessionEntity?
 }

@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,11 +34,17 @@ import rs.edu.raf.rma.movies.watchlist.WatchlistScreen
 import rs.edu.raf.rma.movies.watchlist.WatchlistViewModel
 import rs.edu.raf.rma.profile.ProfileScreen
 import rs.edu.raf.rma.profile.ProfileViewModel
+import rs.edu.raf.rma.quiz.landing.QuizLandingScreen
+import rs.edu.raf.rma.quiz.landing.QuizLandingViewModel
+import rs.edu.raf.rma.quiz.result.QuizResultScreen
+import rs.edu.raf.rma.quiz.result.QuizResultViewModel
+import rs.edu.raf.rma.quiz.session.QuizScreen
+import rs.edu.raf.rma.quiz.session.QuizViewModel
 import rs.edu.raf.rma.movies.list.MoviesListScreen
 import rs.edu.raf.rma.splash.SplashScreen
 import rs.edu.raf.rma.splash.SplashViewModel
 
-private val bottomBarRoutes = setOf("movies", "favorites", "watchlist", "profile")
+private val bottomBarRoutes = setOf("movies", "favorites", "watchlist", "profile", "quiz_landing")
 
 @Composable
 fun ShowtimeNavigation() {
@@ -81,6 +88,17 @@ fun ShowtimeNavigation() {
                         },
                         icon = { Icon(Icons.Filled.Bookmark, contentDescription = "Watchlist") },
                         label = { Text("Watchlist") },
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute == "quiz_landing",
+                        onClick = {
+                            navController.navigate("quiz_landing") {
+                                popUpTo("movies") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Quiz, contentDescription = "Kviz") },
+                        label = { Text("Kviz") },
                     )
                     NavigationBarItem(
                         selected = currentRoute == "profile",
@@ -210,6 +228,57 @@ fun ShowtimeNavigation() {
                     onNavigateToAuth = {
                         navController.navigate("auth") {
                             popUpTo(0) { inclusive = true }
+                        }
+                    },
+                )
+            }
+
+            composable(route = "quiz_landing") {
+                val viewModel = koinViewModel<QuizLandingViewModel>()
+                val state by viewModel.state.collectAsState()
+                QuizLandingScreen(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    sideEffect = viewModel.sideEffect,
+                    onNavigateToSession = {
+                        navController.navigate("quiz_session")
+                    },
+                )
+            }
+
+            composable(route = "quiz_session") {
+                val viewModel = koinViewModel<QuizViewModel>()
+                val state by viewModel.state.collectAsState()
+                QuizScreen(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    sideEffect = viewModel.sideEffect,
+                    onNavigateToResult = {
+                        navController.navigate("quiz_result") {
+                            popUpTo("quiz_session") { inclusive = true }
+                        }
+                    },
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    },
+                )
+            }
+
+            composable(route = "quiz_result") {
+                val viewModel = koinViewModel<QuizResultViewModel>()
+                val state by viewModel.state.collectAsState()
+                QuizResultScreen(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    sideEffect = viewModel.sideEffect,
+                    onNavigateToSession = {
+                        navController.navigate("quiz_session") {
+                            popUpTo("quiz_result") { inclusive = true }
+                        }
+                    },
+                    onNavigateToHome = {
+                        navController.navigate("quiz_landing") {
+                            popUpTo("quiz_result") { inclusive = true }
                         }
                     },
                 )

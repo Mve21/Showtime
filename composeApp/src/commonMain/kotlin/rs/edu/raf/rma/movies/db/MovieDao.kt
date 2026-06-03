@@ -20,7 +20,8 @@ interface MovieDao {
         AND (:maxYear IS NULL OR movies.year <= :maxYear)
         AND (:minRating IS NULL OR movies.imdbRating >= :minRating)
         AND (:query IS NULL OR LOWER(movies.title) LIKE '%' || LOWER(:query) || '%')
-        ORDER BY movies.title ASC
+        ORDER BY movies.imdbRating DESC
+        LIMIT 100
     """)
     fun observeMovies(
         genreId: Int?,
@@ -65,6 +66,44 @@ interface MovieDao {
 
     @Query("SELECT * FROM genres ORDER BY name ASC")
     fun observeGenres(): Flow<List<GenreEntity>>
+
+    @Query("SELECT * FROM movies WHERE posterPath IS NOT NULL")
+    suspend fun getMoviesWithImages(): List<MovieEntity>
+
+    @Query("SELECT COUNT(*) FROM movies WHERE posterPath IS NOT NULL")
+    suspend fun countMoviesWithImages(): Int
+
+    @Query("""
+        SELECT DISTINCT movies.* FROM movies
+        INNER JOIN movie_cast ON movies.imdbId = movie_cast.movieId
+        WHERE movies.posterPath IS NOT NULL
+    """)
+    suspend fun getMoviesWithCast(): List<MovieEntity>
+
+    @Query("""
+        SELECT COUNT(*) FROM (
+            SELECT movieId FROM movie_cast
+            INNER JOIN movies ON movie_cast.movieId = movies.imdbId
+            WHERE movies.posterPath IS NOT NULL
+            GROUP BY movieId
+            HAVING COUNT(*) >= 3
+        )
+    """)
+    suspend fun countMoviesWithEnoughCast(): Int
+
+    @Query("""
+        SELECT people.* FROM people
+        INNER JOIN movie_cast ON people.imdbId = movie_cast.personId
+        WHERE movie_cast.movieId = :movieId
+        ORDER BY movie_cast.castOrder ASC
+    """)
+    suspend fun getCastForMovie(movieId: String): List<PersonEntity>
+
+    @Query("SELECT * FROM people")
+    suspend fun getAllPeople(): List<PersonEntity>
+
+    @Query("SELECT * FROM movie_details")
+    suspend fun getAllMovieDetails(): List<MovieDetailEntity>
 
     @Upsert
     suspend fun upsertMovies(movies: List<MovieEntity>)

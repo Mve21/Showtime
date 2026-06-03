@@ -97,12 +97,13 @@ fun PersonSummaryApiModel.toPersonEntity(): PersonEntity = PersonEntity(
     gender = null,
 )
 
-fun PersonSummaryApiModel.toMovieCastLink(movieId: String): MovieCastCrossRef =
+fun PersonSummaryApiModel.toMovieCastLink(movieId: String, order: Int = 0): MovieCastCrossRef =
     MovieCastCrossRef(
         movieId = movieId,
         personId = imdbId,
         department = department,
         professions = professions,
+        castOrder = order,
     )
 
 
