@@ -44,7 +44,6 @@ class WatchlistViewModel(
         viewModelScope.launch {
             events.collect { event ->
                 when (event) {
-                    WatchlistContract.UiEvent.Refresh -> sync(force = true)
                     is WatchlistContract.UiEvent.RemoveFromWatchlist -> removeFromWatchlist(event.imdbId)
                     is WatchlistContract.UiEvent.MovieClicked ->
                         setEffect(WatchlistContract.SideEffect.NavigateToDetail(event.imdbId))

@@ -44,7 +44,6 @@ class FavoritesViewModel(
         viewModelScope.launch {
             events.collect { event ->
                 when (event) {
-                    FavoritesContract.UiEvent.Refresh -> sync(force = true)
                     is FavoritesContract.UiEvent.RemoveFavorite -> removeFavorite(event.imdbId)
                     is FavoritesContract.UiEvent.MovieClicked ->
                         setEffect(FavoritesContract.SideEffect.NavigateToDetail(event.imdbId))

@@ -141,7 +141,6 @@ private fun MoviesListContent(
                     if (state.query.isNotBlank()) {
                         IconButton(onClick = {
                             eventPublisher(MoviesListContract.UiEvent.SearchQueryChanged(""))
-                            eventPublisher(MoviesListContract.UiEvent.Refresh)
                         }) {
                             Icon(Icons.Filled.Close, contentDescription = "Obriši pretragu")
                         }
@@ -149,9 +148,7 @@ private fun MoviesListContent(
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { eventPublisher(MoviesListContract.UiEvent.Refresh) }
-                ),
+                keyboardActions = KeyboardActions(onSearch = {}),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),

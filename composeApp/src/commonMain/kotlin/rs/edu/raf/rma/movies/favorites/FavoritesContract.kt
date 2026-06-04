@@ -11,7 +11,6 @@ interface FavoritesContract {
     )
 
     sealed class UiEvent {
-        data object Refresh : UiEvent()
         data class RemoveFavorite(val imdbId: String) : UiEvent()
         data class MovieClicked(val imdbId: String) : UiEvent()
     }

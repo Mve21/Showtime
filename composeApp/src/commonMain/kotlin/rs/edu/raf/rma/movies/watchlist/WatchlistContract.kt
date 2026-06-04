@@ -11,7 +11,6 @@ interface WatchlistContract {
     )
 
     sealed class UiEvent {
-        data object Refresh : UiEvent()
         data class RemoveFromWatchlist(val imdbId: String) : UiEvent()
         data class MovieClicked(val imdbId: String) : UiEvent()
     }

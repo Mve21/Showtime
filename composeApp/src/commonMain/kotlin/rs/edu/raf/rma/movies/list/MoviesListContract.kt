@@ -25,7 +25,6 @@ interface MoviesListContract {
     }
 
     sealed class UiEvent {
-        data object Refresh : UiEvent()
         data class MovieClicked(val imdbId: String) : UiEvent()
         data class SearchQueryChanged(val query: String) : UiEvent()
         data object ToggleFilterSheet : UiEvent()

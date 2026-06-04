@@ -40,21 +40,19 @@ class MoviesListViewModel(
         observeEvents()
         observeMovies()
         observeGenres()
-        refresh()
     }
 
     private fun observeEvents() {
         viewModelScope.launch {
             events.collect { event ->
                 when (event) {
-                    MoviesListContract.UiEvent.Refresh -> refresh()
                     is MoviesListContract.UiEvent.MovieClicked ->
                         setEffect(MoviesListContract.SideEffect.NavigateToDetail(event.imdbId))
                     is MoviesListContract.UiEvent.SearchQueryChanged ->
                         setState { copy(query = event.query) }
                     MoviesListContract.UiEvent.ToggleFilterSheet ->
                         setState { copy(isFilterSheetVisible = !isFilterSheetVisible) }
-                    is MoviesListContract.UiEvent.FilterApplied -> {
+                    is MoviesListContract.UiEvent.FilterApplied ->
                         setState {
                             copy(
                                 selectedGenreId = event.genreId,
@@ -66,9 +64,7 @@ class MoviesListViewModel(
                                 isFilterSheetVisible = false,
                             )
                         }
-                        refresh()
-                    }
-                    MoviesListContract.UiEvent.FilterCleared -> {
+                    MoviesListContract.UiEvent.FilterCleared ->
                         setState {
                             copy(
                                 selectedGenreId = null,
@@ -80,8 +76,6 @@ class MoviesListViewModel(
                                 isFilterSheetVisible = false,
                             )
                         }
-                        refresh()
-                    }
                 }
             }
         }
@@ -103,7 +97,7 @@ class MoviesListViewModel(
                         sortOrder = params.sortOrder,
                     )
                 }
-                .collect { movies -> setState { copy(movies = movies, error = null) } }
+                .collect { movies -> setState { copy(movies = movies) } }
         }
     }
 
@@ -112,28 +106,6 @@ class MoviesListViewModel(
             movieRepository.observeGenres()
                 .distinctUntilChanged()
                 .collect { genres -> setState { copy(genres = genres) } }
-        }
-    }
-
-    private fun refresh() {
-        val s = _state.value
-        viewModelScope.launch {
-            setState { copy(isLoading = true) }
-            try {
-                movieRepository.refreshMovies(
-                    query = s.query.takeIf { it.isNotBlank() },
-                    genreId = s.selectedGenreId,
-                    minYear = s.minYear,
-                    maxYear = s.maxYear,
-                    minRating = s.minRating,
-                    sortBy = s.sortBy,
-                    sortOrder = s.sortOrder,
-                )
-            } catch (e: Exception) {
-                setState { copy(error = e.message ?: "Greška pri učitavanju filmova") }
-            } finally {
-                setState { copy(isLoading = false) }
-            }
         }
     }
 }
