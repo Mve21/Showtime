@@ -20,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -28,14 +30,14 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LoginScreen(
-    state: LoginContract.UiState,
-    onEvent: (LoginContract.UiEvent) -> Unit,
-    sideEffect: kotlinx.coroutines.flow.Flow<LoginContract.SideEffect>,
     onNavigateToMovies: () -> Unit,
     onNavigateToSignup: () -> Unit,
+    viewModel: LoginViewModel,
 ) {
-    LaunchedEffect(Unit) {
-        sideEffect.collect { effect ->
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.sideEffects.collect { effect ->
             when (effect) {
                 LoginContract.SideEffect.NavigateToMovies -> onNavigateToMovies()
                 LoginContract.SideEffect.NavigateToSignup -> onNavigateToSignup()
@@ -43,6 +45,17 @@ fun LoginScreen(
         }
     }
 
+    LoginContent(
+        state = state,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@Composable
+private fun LoginContent(
+    state: LoginContract.UiState,
+    eventPublisher: (LoginContract.UiEvent) -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
             contentAlignment = Alignment.Center,
@@ -64,7 +77,7 @@ fun LoginScreen(
 
                 OutlinedTextField(
                     value = state.username,
-                    onValueChange = { onEvent(LoginContract.UiEvent.UsernameChanged(it)) },
+                    onValueChange = { eventPublisher(LoginContract.UiEvent.UsernameChanged(it)) },
                     label = { Text("Korisničko ime") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -77,13 +90,13 @@ fun LoginScreen(
 
                 OutlinedTextField(
                     value = state.password,
-                    onValueChange = { onEvent(LoginContract.UiEvent.PasswordChanged(it)) },
+                    onValueChange = { eventPublisher(LoginContract.UiEvent.PasswordChanged(it)) },
                     label = { Text("Lozinka") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
-                        onDone = { onEvent(LoginContract.UiEvent.LoginClicked) }
+                        onDone = { eventPublisher(LoginContract.UiEvent.LoginClicked) }
                     ),
                     modifier = Modifier.fillMaxWidth(),
                     isError = state.error != null,
@@ -102,7 +115,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { onEvent(LoginContract.UiEvent.LoginClicked) },
+                    onClick = { eventPublisher(LoginContract.UiEvent.LoginClicked) },
                     enabled = !state.isLoading && state.username.isNotBlank() && state.password.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -119,7 +132,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                TextButton(onClick = { onEvent(LoginContract.UiEvent.SignupClicked) }) {
+                TextButton(onClick = { eventPublisher(LoginContract.UiEvent.SignupClicked) }) {
                     Text("Nemaš nalog? Registruj se")
                 }
             }

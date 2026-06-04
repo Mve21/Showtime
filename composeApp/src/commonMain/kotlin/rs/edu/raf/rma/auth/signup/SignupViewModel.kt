@@ -4,12 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import rs.edu.raf.rma.auth.AuthRepository
 
@@ -17,50 +16,71 @@ class SignupViewModel(
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SignupContract.UiState())
-    val uiState: StateFlow<SignupContract.UiState> = _uiState.asStateFlow()
+    private val _state = MutableStateFlow(SignupContract.UiState())
+    val state = _state.asStateFlow()
 
-    private val _sideEffect = Channel<SignupContract.SideEffect>()
-    val sideEffect = _sideEffect.receiveAsFlow()
+    private fun setState(reducer: SignupContract.UiState.() -> SignupContract.UiState) {
+        _state.getAndUpdate(reducer)
+    }
 
-    fun onEvent(event: SignupContract.UiEvent) {
-        when (event) {
-            is SignupContract.UiEvent.FullNameChanged ->
-                _uiState.update { it.copy(fullName = event.value, error = null) }
-            is SignupContract.UiEvent.UsernameChanged ->
-                _uiState.update { it.copy(username = event.value, error = null) }
-            is SignupContract.UiEvent.PasswordChanged ->
-                _uiState.update { it.copy(password = event.value, error = null) }
-            SignupContract.UiEvent.SignupClicked -> signup()
+    private val events = MutableSharedFlow<SignupContract.UiEvent>()
+
+    fun setEvent(event: SignupContract.UiEvent) {
+        viewModelScope.launch { events.emit(event) }
+    }
+
+    private val _effects = MutableSharedFlow<SignupContract.SideEffect>()
+    val sideEffects = _effects.asSharedFlow()
+    private fun setEffect(effect: SignupContract.SideEffect) {
+        viewModelScope.launch { _effects.emit(effect) }
+    }
+
+    init {
+        observeEvents()
+    }
+
+    private fun observeEvents() {
+        viewModelScope.launch {
+            events.collect { event ->
+                when (event) {
+                    is SignupContract.UiEvent.FullNameChanged ->
+                        setState { copy(fullName = event.value, error = null) }
+                    is SignupContract.UiEvent.UsernameChanged ->
+                        setState { copy(username = event.value, error = null) }
+                    is SignupContract.UiEvent.PasswordChanged ->
+                        setState { copy(password = event.value, error = null) }
+                    SignupContract.UiEvent.SignupClicked -> signup()
+                }
+            }
         }
     }
 
     private fun signup() {
-        val state = _uiState.value
+        val state = _state.value
         val validationError = validate(state)
         if (validationError != null) {
-            _uiState.update { it.copy(error = validationError) }
+            setState { copy(error = validationError) }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            setState { copy(isLoading = true, error = null) }
             try {
                 authRepository.signup(
                     fullName = state.fullName.trim(),
                     username = state.username.trim(),
                     password = state.password,
                 )
-                _sideEffect.send(SignupContract.SideEffect.NavigateToMovies)
+                setEffect(SignupContract.SideEffect.NavigateToMovies)
             } catch (e: ResponseException) {
                 val error = when (e.response.status) {
                     HttpStatusCode.UnprocessableEntity,
                     HttpStatusCode.Conflict -> "Korisničko ime je već zauzeto"
                     else -> "Greška servera (${e.response.status.value})"
                 }
-                _uiState.update { it.copy(isLoading = false, error = error) }
+                setState { copy(isLoading = false, error = error) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = "Mrežna greška, pokušaj ponovo") }
+                setState { copy(isLoading = false, error = "Mrežna greška, pokušaj ponovo") }
             }
         }
     }

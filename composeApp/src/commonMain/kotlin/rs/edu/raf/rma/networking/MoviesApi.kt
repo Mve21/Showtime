@@ -24,15 +24,11 @@ import rs.edu.raf.rma.networking.model.UserApiModel
 
 interface MoviesApi {
 
-    // --- Auth ---
-
     @POST("auth/signup")
     suspend fun signup(@Body body: SignupBody): AuthResponseApiModel
 
     @POST("auth/login")
     suspend fun login(@Body body: LoginBody): AuthResponseApiModel
-
-    // --- Catalog ---
 
     @GET("movies")
     suspend fun getMovies(
@@ -63,12 +59,8 @@ interface MoviesApi {
     @GET("people/{id}")
     suspend fun getPerson(@Path("id") id: String): PersonDetailApiModel
 
-    // --- User profile ---
-
     @GET("me")
     suspend fun getMe(): UserApiModel
-
-    // --- Favorites ---
 
     @GET("me/favorites")
     suspend fun getFavorites(): List<MovieListItemApiModel>
@@ -79,8 +71,6 @@ interface MoviesApi {
     @DELETE("me/favorites/{movieId}")
     suspend fun removeFavorite(@Path("movieId") movieId: String)
 
-    // --- Watchlist ---
-
     @GET("me/watchlist")
     suspend fun getWatchlist(): List<MovieListItemApiModel>
 
@@ -89,8 +79,6 @@ interface MoviesApi {
 
     @DELETE("me/watchlist/{movieId}")
     suspend fun removeFromWatchlist(@Path("movieId") movieId: String)
-
-    // --- Leaderboard & Quiz results ---
 
     @GET("leaderboard")
     suspend fun getLeaderboard(

@@ -20,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -28,20 +30,33 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun SignupScreen(
-    state: SignupContract.UiState,
-    onEvent: (SignupContract.UiEvent) -> Unit,
-    sideEffect: kotlinx.coroutines.flow.Flow<SignupContract.SideEffect>,
     onNavigateToMovies: () -> Unit,
     onNavigateToLogin: () -> Unit,
+    viewModel: SignupViewModel,
 ) {
-    LaunchedEffect(Unit) {
-        sideEffect.collect { effect ->
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.sideEffects.collect { effect ->
             when (effect) {
                 SignupContract.SideEffect.NavigateToMovies -> onNavigateToMovies()
             }
         }
     }
 
+    SignupContent(
+        state = state,
+        onNavigateToLogin = onNavigateToLogin,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@Composable
+private fun SignupContent(
+    state: SignupContract.UiState,
+    onNavigateToLogin: () -> Unit,
+    eventPublisher: (SignupContract.UiEvent) -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
             contentAlignment = Alignment.Center,
@@ -63,7 +78,7 @@ fun SignupScreen(
 
                 OutlinedTextField(
                     value = state.fullName,
-                    onValueChange = { onEvent(SignupContract.UiEvent.FullNameChanged(it)) },
+                    onValueChange = { eventPublisher(SignupContract.UiEvent.FullNameChanged(it)) },
                     label = { Text("Ime i prezime") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -76,7 +91,7 @@ fun SignupScreen(
 
                 OutlinedTextField(
                     value = state.username,
-                    onValueChange = { onEvent(SignupContract.UiEvent.UsernameChanged(it)) },
+                    onValueChange = { eventPublisher(SignupContract.UiEvent.UsernameChanged(it)) },
                     label = { Text("Korisničko ime") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -89,13 +104,13 @@ fun SignupScreen(
 
                 OutlinedTextField(
                     value = state.password,
-                    onValueChange = { onEvent(SignupContract.UiEvent.PasswordChanged(it)) },
+                    onValueChange = { eventPublisher(SignupContract.UiEvent.PasswordChanged(it)) },
                     label = { Text("Lozinka") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
-                        onDone = { onEvent(SignupContract.UiEvent.SignupClicked) }
+                        onDone = { eventPublisher(SignupContract.UiEvent.SignupClicked) }
                     ),
                     modifier = Modifier.fillMaxWidth(),
                     isError = state.error != null,
@@ -114,7 +129,7 @@ fun SignupScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { onEvent(SignupContract.UiEvent.SignupClicked) },
+                    onClick = { eventPublisher(SignupContract.UiEvent.SignupClicked) },
                     enabled = !state.isLoading &&
                         state.fullName.isNotBlank() &&
                         state.username.isNotBlank() &&

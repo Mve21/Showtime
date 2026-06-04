@@ -2,15 +2,12 @@ package rs.edu.raf.rma.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import rs.edu.raf.rma.auth.AuthRepository
 import rs.edu.raf.rma.core.auth.AuthStore
@@ -26,60 +23,83 @@ class ProfileViewModel(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileContract.UiState())
-    val state: StateFlow<ProfileContract.UiState> = _state.asStateFlow()
+    val state = _state.asStateFlow()
 
-    private val _sideEffect = Channel<ProfileContract.SideEffect>()
-    val sideEffect = _sideEffect.receiveAsFlow()
+    private fun setState(reducer: ProfileContract.UiState.() -> ProfileContract.UiState) {
+        _state.getAndUpdate(reducer)
+    }
+
+    private val events = MutableSharedFlow<ProfileContract.UiEvent>()
+
+    fun setEvent(event: ProfileContract.UiEvent) {
+        viewModelScope.launch { events.emit(event) }
+    }
+
+    private val _effects = MutableSharedFlow<ProfileContract.SideEffect>()
+    val sideEffects = _effects.asSharedFlow()
+    private fun setEffect(effect: ProfileContract.SideEffect) {
+        viewModelScope.launch { _effects.emit(effect) }
+    }
 
     init {
+        observeEvents()
         observeUserData()
         observeStats()
     }
 
-    fun onEvent(event: ProfileContract.UiEvent) {
-        when (event) {
-            ProfileContract.UiEvent.LogoutClicked -> logout()
+    private fun observeEvents() {
+        viewModelScope.launch {
+            events.collect { event ->
+                when (event) {
+                    ProfileContract.UiEvent.LogoutClicked -> logout()
+                }
+            }
         }
     }
 
     private fun observeUserData() {
-        authStore.authState
-            .onEach { authState ->
+        viewModelScope.launch {
+            authStore.authState.collect { authState ->
                 if (authState is AuthState.Authenticated) {
-                    _state.update {
-                        it.copy(
+                    setState {
+                        copy(
                             username = authState.data.username ?: "",
                             fullName = authState.data.fullName ?: "",
                         )
                     }
                 }
             }
-            .launchIn(viewModelScope)
+        }
     }
 
     private fun observeStats() {
-        combine(
-            movieRepository.observeFavoriteCount(),
-            movieRepository.observeWatchlistCount(),
-            quizRepository.observeBestScore(),
-            quizRepository.observeTotalPlays(),
-        ) { favCount, watchCount, bestScore, totalPlays ->
-            _state.update {
-                it.copy(
-                    favoriteCount = favCount,
-                    watchlistCount = watchCount,
-                    bestScore = bestScore,
-                    totalPlays = totalPlays,
-                )
+        viewModelScope.launch {
+            combine(
+                movieRepository.observeFavoriteCount(),
+                movieRepository.observeWatchlistCount(),
+                quizRepository.observeBestScore(),
+                quizRepository.observeTotalPlays(),
+            ) { favCount, watchCount, bestScore, totalPlays ->
+                favCount to Triple(watchCount, bestScore, totalPlays)
+            }.collect { (favCount, rest) ->
+                val (watchCount, bestScore, totalPlays) = rest
+                setState {
+                    copy(
+                        favoriteCount = favCount,
+                        watchlistCount = watchCount,
+                        bestScore = bestScore,
+                        totalPlays = totalPlays,
+                    )
+                }
             }
-        }.launchIn(viewModelScope)
+        }
     }
 
     private fun logout() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            setState { copy(isLoading = true) }
             authRepository.logout()
-            _sideEffect.send(ProfileContract.SideEffect.NavigateToAuth)
+            setEffect(ProfileContract.SideEffect.NavigateToAuth)
         }
     }
 }

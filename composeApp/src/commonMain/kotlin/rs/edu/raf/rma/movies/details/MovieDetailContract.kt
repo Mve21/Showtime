@@ -11,7 +11,6 @@ interface MovieDetailContract {
     )
 
     sealed class UiEvent {
-        data object Refresh : UiEvent()
         data object BackClicked : UiEvent()
         data object ToggleFavorite : UiEvent()
         data object ToggleWatchlist : UiEvent()

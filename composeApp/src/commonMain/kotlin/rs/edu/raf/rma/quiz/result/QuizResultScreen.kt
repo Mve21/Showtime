@@ -20,6 +20,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,19 +29,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.flow.Flow
+import rs.edu.raf.rma.core.format1d
 import rs.edu.raf.rma.quiz.db.QuizSessionEntity
 
 @Composable
 fun QuizResultScreen(
-    state: QuizResultContract.UiState,
-    onEvent: (QuizResultContract.UiEvent) -> Unit,
-    sideEffect: Flow<QuizResultContract.SideEffect>,
     onNavigateToSession: () -> Unit,
     onNavigateToHome: () -> Unit,
+    viewModel: QuizResultViewModel,
 ) {
-    LaunchedEffect(Unit) {
-        sideEffect.collect { effect ->
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.sideEffects.collect { effect ->
             when (effect) {
                 QuizResultContract.SideEffect.NavigateToSession -> onNavigateToSession()
                 QuizResultContract.SideEffect.NavigateToHome -> onNavigateToHome()
@@ -47,6 +49,17 @@ fun QuizResultScreen(
         }
     }
 
+    QuizResultContent(
+        state = state,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@Composable
+private fun QuizResultContent(
+    state: QuizResultContract.UiState,
+    eventPublisher: (QuizResultContract.UiEvent) -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize()) {
         if (state.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -80,14 +93,14 @@ fun QuizResultScreen(
                 Spacer(modifier = Modifier.height(48.dp))
 
                 Button(
-                    onClick = { onEvent(QuizResultContract.UiEvent.PlayAgain) },
+                    onClick = { eventPublisher(QuizResultContract.UiEvent.PlayAgain) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Igraj ponovo")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
-                    onClick = { onEvent(QuizResultContract.UiEvent.GoHome) },
+                    onClick = { eventPublisher(QuizResultContract.UiEvent.GoHome) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Nazad na početak")
@@ -107,7 +120,7 @@ private fun ScoreDisplay(score: Float) {
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = "%.1f".format(score),
+            text = score.format1d(),
             fontSize = 72.sp,
             fontWeight = FontWeight.Bold,
             color = scoreColor,

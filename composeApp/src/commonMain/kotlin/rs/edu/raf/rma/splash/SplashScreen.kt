@@ -13,30 +13,43 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun SplashScreen(
-    bootState: BootState,
-    isLoggedIn: Boolean,
     onNavigateToMovies: () -> Unit,
-    onNavigateToAuthLanding: () -> Unit,
-    onRetry: () -> Unit,
+    onNavigateToAuth: () -> Unit,
+    viewModel: SplashViewModel,
 ) {
-    LaunchedEffect(bootState) {
-        if (bootState is BootState.Success) {
-            if (isLoggedIn) onNavigateToMovies() else onNavigateToAuthLanding()
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(state.bootState) {
+        if (state.bootState is BootState.Success) {
+            if (state.isLoggedIn) onNavigateToMovies() else onNavigateToAuth()
         }
     }
 
+    SplashContent(
+        state = state,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@Composable
+private fun SplashContent(
+    state: SplashContract.UiState,
+    eventPublisher: (SplashContract.UiEvent) -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxSize(),
         ) {
-            when (bootState) {
+            when (val bootState = state.bootState) {
                 BootState.Loading, BootState.Success -> CircularProgressIndicator()
                 is BootState.Failed -> {
                     Column(
@@ -53,7 +66,7 @@ fun SplashScreen(
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = onRetry) {
+                        Button(onClick = { eventPublisher(SplashContract.UiEvent.Retry) }) {
                             Text("Pokušaj ponovo")
                         }
                     }

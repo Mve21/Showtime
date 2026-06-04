@@ -3,14 +3,11 @@ package rs.edu.raf.rma.movies.watchlist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import rs.edu.raf.rma.movies.domain.MovieRepository
 
@@ -19,42 +16,60 @@ class WatchlistViewModel(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(WatchlistContract.UiState())
-    val state: StateFlow<WatchlistContract.UiState> = _state.asStateFlow()
+    val state = _state.asStateFlow()
 
-    private val _sideEffect = Channel<WatchlistContract.SideEffect>()
-    val sideEffect = _sideEffect.receiveAsFlow()
+    private fun setState(reducer: WatchlistContract.UiState.() -> WatchlistContract.UiState) {
+        _state.getAndUpdate(reducer)
+    }
+
+    private val events = MutableSharedFlow<WatchlistContract.UiEvent>()
+
+    fun setEvent(event: WatchlistContract.UiEvent) {
+        viewModelScope.launch { events.emit(event) }
+    }
+
+    private val _effects = MutableSharedFlow<WatchlistContract.SideEffect>()
+    val sideEffects = _effects.asSharedFlow()
+    private fun setEffect(effect: WatchlistContract.SideEffect) {
+        viewModelScope.launch { _effects.emit(effect) }
+    }
 
     init {
+        observeEvents()
         observeWatchlist()
         sync()
     }
 
-    fun onEvent(event: WatchlistContract.UiEvent) {
-        when (event) {
-            WatchlistContract.UiEvent.Refresh -> sync()
-            is WatchlistContract.UiEvent.RemoveFromWatchlist -> removeFromWatchlist(event.imdbId)
-            is WatchlistContract.UiEvent.MovieClicked -> viewModelScope.launch {
-                _sideEffect.send(WatchlistContract.SideEffect.NavigateToDetail(event.imdbId))
+    private fun observeEvents() {
+        viewModelScope.launch {
+            events.collect { event ->
+                when (event) {
+                    WatchlistContract.UiEvent.Refresh -> sync(force = true)
+                    is WatchlistContract.UiEvent.RemoveFromWatchlist -> removeFromWatchlist(event.imdbId)
+                    is WatchlistContract.UiEvent.MovieClicked ->
+                        setEffect(WatchlistContract.SideEffect.NavigateToDetail(event.imdbId))
+                }
             }
         }
     }
 
     private fun observeWatchlist() {
-        movieRepository.observeWatchlist()
-            .onEach { movies -> _state.update { it.copy(movies = movies) } }
-            .launchIn(viewModelScope)
+        viewModelScope.launch {
+            movieRepository.observeWatchlist()
+                .collect { movies -> setState { copy(movies = movies) } }
+        }
     }
 
-    private fun sync() {
+    private fun sync(force: Boolean = false) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            setState { copy(isLoading = true, error = null) }
             try {
-                movieRepository.syncWatchlist()
+                movieRepository.syncWatchlist(force)
             } catch (e: Exception) {
                 Napier.e("syncWatchlist failed", e)
-                _state.update { it.copy(error = "Nije moguće sinhronizovati sa serverom") }
+                setState { copy(error = "Nije moguće sinhronizovati sa serverom") }
             } finally {
-                _state.update { it.copy(isLoading = false) }
+                setState { copy(isLoading = false) }
             }
         }
     }
@@ -65,7 +80,7 @@ class WatchlistViewModel(
                 movieRepository.removeFromWatchlist(imdbId)
             } catch (e: Exception) {
                 Napier.e("removeFromWatchlist failed for $imdbId", e)
-                _sideEffect.send(WatchlistContract.SideEffect.ShowError("Greška pri uklanjanju sa liste za gledanje"))
+                setEffect(WatchlistContract.SideEffect.ShowError("Greška pri uklanjanju sa liste za gledanje"))
             }
         }
     }

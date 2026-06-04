@@ -22,4 +22,7 @@ interface QuizDao {
 
     @Query("SELECT * FROM quiz_sessions ORDER BY playedAt DESC LIMIT 1")
     suspend fun getLastSession(): QuizSessionEntity?
+
+    @Query("DELETE FROM quiz_sessions")
+    suspend fun deleteAllSessions()
 }

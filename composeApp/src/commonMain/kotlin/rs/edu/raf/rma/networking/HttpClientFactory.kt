@@ -18,8 +18,6 @@ import io.ktor.serialization.kotlinx.json.json
 
 object HttpClientFactory {
 
-//    private val engine = createHttpClientEngine()
-
     fun createHttpClientWithDefaultConfig(
         block: HttpClientConfig<*>.() -> Unit = {}
     ): HttpClient {

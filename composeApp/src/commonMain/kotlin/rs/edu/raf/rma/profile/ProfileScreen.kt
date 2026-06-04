@@ -24,29 +24,42 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.Flow
+import rs.edu.raf.rma.core.format1d
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    state: ProfileContract.UiState,
-    onEvent: (ProfileContract.UiEvent) -> Unit,
-    sideEffect: Flow<ProfileContract.SideEffect>,
     onNavigateToAuth: () -> Unit,
+    viewModel: ProfileViewModel,
 ) {
-    LaunchedEffect(Unit) {
-        sideEffect.collect { effect ->
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.sideEffects.collect { effect ->
             when (effect) {
                 ProfileContract.SideEffect.NavigateToAuth -> onNavigateToAuth()
             }
         }
     }
 
+    ProfileContent(
+        state = state,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileContent(
+    state: ProfileContract.UiState,
+    eventPublisher: (ProfileContract.UiEvent) -> Unit,
+) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Profil") }) },
     ) { paddingValues ->
@@ -108,7 +121,7 @@ fun ProfileScreen(
             ) {
                 StatCard(
                     label = "Najbolji skor",
-                    value = state.bestScore?.let { "%.1f".format(it) } ?: "-",
+                    value = state.bestScore?.format1d() ?: "-",
                 )
                 StatCard(label = "Kvizova", value = state.totalPlays.toString())
             }
@@ -116,7 +129,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { onEvent(ProfileContract.UiEvent.LogoutClicked) },
+                onClick = { eventPublisher(ProfileContract.UiEvent.LogoutClicked) },
                 enabled = !state.isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,

@@ -4,14 +4,14 @@ import kotlinx.coroutines.flow.Flow
 
 interface MovieRepository {
 
-    // --- Catalog ---
-
     fun observeMovies(
         genreId: Int? = null,
         minYear: Int? = null,
         maxYear: Int? = null,
         minRating: Float? = null,
         query: String? = null,
+        sortBy: String? = null,
+        sortOrder: String? = null,
     ): Flow<List<Movie>>
 
     suspend fun refreshMovies(
@@ -25,39 +25,33 @@ interface MovieRepository {
         page: Int = 1,
     )
 
-    // --- Movie detail ---
-
     fun observeMovieDetail(imdbId: String): Flow<MovieDetail?>
 
-    suspend fun refreshMovieDetail(imdbId: String)
-
-    // --- Genres ---
+    suspend fun fetchMovieDetail(imdbId: String)
 
     fun observeGenres(): Flow<List<Genre>>
 
     suspend fun refreshGenres()
 
-    // --- Favorites ---
-
     fun observeFavorites(): Flow<List<Movie>>
 
     fun observeFavoriteCount(): Flow<Int>
 
-    suspend fun syncFavorites()
+    suspend fun syncFavorites(force: Boolean = false)
 
     suspend fun addFavorite(imdbId: String)
 
     suspend fun removeFavorite(imdbId: String)
 
-    // --- Watchlist ---
-
     fun observeWatchlist(): Flow<List<Movie>>
 
     fun observeWatchlistCount(): Flow<Int>
 
-    suspend fun syncWatchlist()
+    suspend fun syncWatchlist(force: Boolean = false)
 
     suspend fun addToWatchlist(imdbId: String)
 
     suspend fun removeFromWatchlist(imdbId: String)
+
+    suspend fun bootstrapCatalog()
 }

@@ -4,13 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import rs.edu.raf.rma.movies.domain.MovieRepository
 
@@ -34,22 +33,24 @@ class MovieDetailViewModel(
         viewModelScope.launch { events.emit(event) }
     }
 
-    private val _sideEffects = Channel<MovieDetailContract.SideEffect>()
-    val sideEffects = _sideEffects.receiveAsFlow()
+    private val _effects = MutableSharedFlow<MovieDetailContract.SideEffect>()
+    val sideEffects = _effects.asSharedFlow()
+    private fun setEffect(effect: MovieDetailContract.SideEffect) {
+        viewModelScope.launch { _effects.emit(effect) }
+    }
 
     init {
         observeEvents()
         observeMovieDetail()
-        refresh()
+        fetchDetails()
     }
 
     private fun observeEvents() {
         viewModelScope.launch {
             events.collect { event ->
                 when (event) {
-                    MovieDetailContract.UiEvent.Refresh -> refresh()
                     MovieDetailContract.UiEvent.BackClicked -> {
-                        _sideEffects.send(MovieDetailContract.SideEffect.NavigateBack)
+                        setEffect(MovieDetailContract.SideEffect.NavigateBack)
                     }
                     MovieDetailContract.UiEvent.ToggleFavorite -> toggleFavorite()
                     MovieDetailContract.UiEvent.ToggleWatchlist -> toggleWatchlist()
@@ -68,11 +69,11 @@ class MovieDetailViewModel(
         }
     }
 
-    private fun refresh() {
+    private fun fetchDetails() {
         viewModelScope.launch {
             setState { copy(isLoading = true) }
             try {
-                movieRepository.refreshMovieDetail(imdbId)
+                movieRepository.fetchMovieDetail(imdbId)
             } catch (e: Exception) {
                 Napier.e("refreshMovieDetail failed for $imdbId", e)
                 setState { copy(error = e.message ?: "Greška pri učitavanju filma") }
@@ -92,7 +93,7 @@ class MovieDetailViewModel(
                 Napier.e("toggleFavorite failed for $imdbId", e)
                 val message = if (isFavorite) "Greška pri uklanjanju iz omiljenih"
                               else "Greška pri dodavanju u omiljene"
-                _sideEffects.send(MovieDetailContract.SideEffect.ShowError(message))
+                setEffect(MovieDetailContract.SideEffect.ShowError(message))
             }
         }
     }
@@ -107,7 +108,7 @@ class MovieDetailViewModel(
                 Napier.e("toggleWatchlist failed for $imdbId", e)
                 val message = if (isInWatchlist) "Greška pri uklanjanju sa liste za gledanje"
                               else "Greška pri dodavanju na listu za gledanje"
-                _sideEffects.send(MovieDetailContract.SideEffect.ShowError(message))
+                setEffect(MovieDetailContract.SideEffect.ShowError(message))
             }
         }
     }

@@ -24,11 +24,8 @@ class QuizQuestionGenerator(private val appDatabase: AppDatabase) {
         val moviesWithCast = dao.getMoviesWithCast().shuffled()
         val allPeople = dao.getAllPeople()
 
-        // Pool koji garantuje min 2, max 4 po tipu, ukupno 10:
-        // [GM×2, GY×2, GLA×2] + 4 nasumična (max 2 više po tipu)
         val typeSequence = buildTypeSequence()
 
-        // usedMovieIds prati SVE filmove koji su ikada bili i tačan I pogrešan odgovor
         val usedMovieIds = mutableSetOf<String>()
         val usedImageUrls = mutableSetOf<String>()
         val typeCounts = mutableMapOf(
@@ -57,15 +54,12 @@ class QuizQuestionGenerator(private val appDatabase: AppDatabase) {
         return questions
     }
 
-    // Garantuje min 2 i max 4 po tipu, ukupno 10
     private fun buildTypeSequence(): List<QuestionType> {
-        // Baza: tačno 2 od svakog tipa = 6 pitanja
         val base = listOf(
             QuestionType.GuessMovie, QuestionType.GuessMovie,
             QuestionType.GuessYear, QuestionType.GuessYear,
             QuestionType.GuessLeadActor, QuestionType.GuessLeadActor,
         )
-        // Preostala 4: po max 2 više od svakog tipa (da ne premaši 4 ukupno)
         val extra = (
             listOf(QuestionType.GuessMovie, QuestionType.GuessMovie) +
             listOf(QuestionType.GuessYear, QuestionType.GuessYear) +
@@ -87,7 +81,6 @@ class QuizQuestionGenerator(private val appDatabase: AppDatabase) {
             val imageUrl = resolveGuessMovieImage(movie, details[movie.imdbId]) ?: continue
             if (imageUrl in usedImageUrls) continue
 
-            // Pogrešni odgovori: filmovi koji NISU korišćeni ni kao tačan ni kao pogrešan odgovor
             val wrongCandidates = movies.filter { it.imdbId !in usedMovieIds && it.imdbId != movie.imdbId }
             if (wrongCandidates.size < 3) continue
 

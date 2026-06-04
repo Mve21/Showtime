@@ -39,7 +39,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun quizDao(): QuizDao
 }
 
-// The Room compiler generates the `actual` implementations.
 @Suppress("NO_ACTUAL_FOR_EXPECT", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase

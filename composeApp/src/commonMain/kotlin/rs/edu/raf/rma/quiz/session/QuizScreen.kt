@@ -25,11 +25,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.flow.Flow
 import rs.edu.raf.rma.quiz.domain.QuizQuestion
 
 private val CorrectColor = Color(0xFF4CAF50)
@@ -47,16 +46,16 @@ private val WrongColor = Color(0xFFF44336)
 
 @Composable
 fun QuizScreen(
-    state: QuizContract.UiState,
-    onEvent: (QuizContract.UiEvent) -> Unit,
-    sideEffect: Flow<QuizContract.SideEffect>,
     onNavigateToResult: () -> Unit,
     onNavigateBack: () -> Unit,
+    viewModel: QuizViewModel,
 ) {
-    BackHandler { onEvent(QuizContract.UiEvent.BackPressed) }
+    val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(Unit) {
-        sideEffect.collect { effect ->
+    BackHandler { viewModel.setEvent(QuizContract.UiEvent.BackPressed) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.sideEffects.collect { effect ->
             when (effect) {
                 QuizContract.SideEffect.NavigateToResult -> onNavigateToResult()
                 QuizContract.SideEffect.NavigateBack -> onNavigateBack()
@@ -64,10 +63,21 @@ fun QuizScreen(
         }
     }
 
+    QuizContent(
+        state = state,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@Composable
+private fun QuizContent(
+    state: QuizContract.UiState,
+    eventPublisher: (QuizContract.UiEvent) -> Unit,
+) {
     if (state.showAbandonDialog) {
         AbandonDialog(
-            onConfirm = { onEvent(QuizContract.UiEvent.AbandonConfirmed) },
-            onDismiss = { onEvent(QuizContract.UiEvent.AbandonDismissed) },
+            onConfirm = { eventPublisher(QuizContract.UiEvent.AbandonConfirmed) },
+            onDismiss = { eventPublisher(QuizContract.UiEvent.AbandonDismissed) },
         )
     }
 
@@ -83,15 +93,15 @@ fun QuizScreen(
             }
         }
         state.currentQuestion != null -> {
-            QuizContent(state = state, onEvent = onEvent)
+            QuizBody(state = state, eventPublisher = eventPublisher)
         }
     }
 }
 
 @Composable
-private fun QuizContent(
+private fun QuizBody(
     state: QuizContract.UiState,
-    onEvent: (QuizContract.UiEvent) -> Unit,
+    eventPublisher: (QuizContract.UiEvent) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -121,7 +131,7 @@ private fun QuizContent(
             question = state.currentQuestion!!,
             selectedOptionIndex = state.selectedOptionIndex,
             isFeedbackPhase = state.isFeedbackPhase,
-            onAnswerClick = { onEvent(QuizContract.UiEvent.AnswerSelected(it)) },
+            onAnswerClick = { eventPublisher(QuizContract.UiEvent.AnswerSelected(it)) },
         )
 
         Spacer(modifier = Modifier.height(24.dp))

@@ -42,6 +42,7 @@ class AuthRepositoryImpl(
     override suspend fun logout() {
         appDatabase.movieDao().deleteAllFavorites()
         appDatabase.movieDao().deleteAllWatchlist()
+        appDatabase.quizDao().deleteAllSessions()
         authStore.clearAuthData()
     }
 }

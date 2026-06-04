@@ -2,13 +2,14 @@ package rs.edu.raf.rma.movies.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import rs.edu.raf.rma.movies.domain.MovieRepository
 
@@ -29,12 +30,16 @@ class MoviesListViewModel(
         viewModelScope.launch { events.emit(event) }
     }
 
-    private val _sideEffects = Channel<MoviesListContract.SideEffect>()
-    val sideEffects = _sideEffects.receiveAsFlow()
+    private val _effects = MutableSharedFlow<MoviesListContract.SideEffect>()
+    val sideEffects = _effects.asSharedFlow()
+    private fun setEffect(effect: MoviesListContract.SideEffect) {
+        viewModelScope.launch { _effects.emit(effect) }
+    }
 
     init {
         observeEvents()
         observeMovies()
+        observeGenres()
         refresh()
     }
 
@@ -43,10 +48,39 @@ class MoviesListViewModel(
             events.collect { event ->
                 when (event) {
                     MoviesListContract.UiEvent.Refresh -> refresh()
-                    is MoviesListContract.UiEvent.MovieClicked -> {
-                        _sideEffects.send(
-                            MoviesListContract.SideEffect.NavigateToDetail(event.imdbId)
-                        )
+                    is MoviesListContract.UiEvent.MovieClicked ->
+                        setEffect(MoviesListContract.SideEffect.NavigateToDetail(event.imdbId))
+                    is MoviesListContract.UiEvent.SearchQueryChanged ->
+                        setState { copy(query = event.query) }
+                    MoviesListContract.UiEvent.ToggleFilterSheet ->
+                        setState { copy(isFilterSheetVisible = !isFilterSheetVisible) }
+                    is MoviesListContract.UiEvent.FilterApplied -> {
+                        setState {
+                            copy(
+                                selectedGenreId = event.genreId,
+                                minYear = event.minYear,
+                                maxYear = event.maxYear,
+                                minRating = event.minRating,
+                                sortBy = event.sortBy,
+                                sortOrder = event.sortOrder,
+                                isFilterSheetVisible = false,
+                            )
+                        }
+                        refresh()
+                    }
+                    MoviesListContract.UiEvent.FilterCleared -> {
+                        setState {
+                            copy(
+                                selectedGenreId = null,
+                                minYear = null,
+                                maxYear = null,
+                                minRating = null,
+                                sortBy = null,
+                                sortOrder = null,
+                                isFilterSheetVisible = false,
+                            )
+                        }
+                        refresh()
                     }
                 }
             }
@@ -55,19 +89,46 @@ class MoviesListViewModel(
 
     private fun observeMovies() {
         viewModelScope.launch {
-            movieRepository.observeMovies()
+            _state
+                .map { it.toFilterParams() }
                 .distinctUntilChanged()
-                .collect { movies ->
-                    setState { copy(movies = movies, error = null) }
+                .flatMapLatest { params ->
+                    movieRepository.observeMovies(
+                        query = params.query,
+                        genreId = params.genreId,
+                        minYear = params.minYear,
+                        maxYear = params.maxYear,
+                        minRating = params.minRating,
+                        sortBy = params.sortBy,
+                        sortOrder = params.sortOrder,
+                    )
                 }
+                .collect { movies -> setState { copy(movies = movies, error = null) } }
+        }
+    }
+
+    private fun observeGenres() {
+        viewModelScope.launch {
+            movieRepository.observeGenres()
+                .distinctUntilChanged()
+                .collect { genres -> setState { copy(genres = genres) } }
         }
     }
 
     private fun refresh() {
+        val s = _state.value
         viewModelScope.launch {
             setState { copy(isLoading = true) }
             try {
-                movieRepository.refreshMovies()
+                movieRepository.refreshMovies(
+                    query = s.query.takeIf { it.isNotBlank() },
+                    genreId = s.selectedGenreId,
+                    minYear = s.minYear,
+                    maxYear = s.maxYear,
+                    minRating = s.minRating,
+                    sortBy = s.sortBy,
+                    sortOrder = s.sortOrder,
+                )
             } catch (e: Exception) {
                 setState { copy(error = e.message ?: "Greška pri učitavanju filmova") }
             } finally {
@@ -76,3 +137,23 @@ class MoviesListViewModel(
         }
     }
 }
+
+private data class FilterParams(
+    val query: String? = null,
+    val genreId: Int? = null,
+    val minYear: Int? = null,
+    val maxYear: Int? = null,
+    val minRating: Float? = null,
+    val sortBy: String? = null,
+    val sortOrder: String? = null,
+)
+
+private fun MoviesListContract.UiState.toFilterParams() = FilterParams(
+    query = query.takeIf { it.isNotBlank() },
+    genreId = selectedGenreId,
+    minYear = minYear,
+    maxYear = maxYear,
+    minRating = minRating,
+    sortBy = sortBy,
+    sortOrder = sortOrder,
+)

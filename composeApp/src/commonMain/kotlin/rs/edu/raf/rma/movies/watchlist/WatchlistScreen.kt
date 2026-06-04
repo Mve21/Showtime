@@ -28,6 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,28 +39,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.flow.Flow
+import rs.edu.raf.rma.core.format1d
 import rs.edu.raf.rma.movies.domain.Movie
 
 private const val TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WatchlistScreen(
-    state: WatchlistContract.UiState,
-    onEvent: (WatchlistContract.UiEvent) -> Unit,
-    sideEffect: Flow<WatchlistContract.SideEffect>,
     onNavigateToDetail: (String) -> Unit,
+    viewModel: WatchlistViewModel,
 ) {
+    val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
-        sideEffect.collect { effect ->
+    LaunchedEffect(viewModel) {
+        viewModel.sideEffects.collect { effect ->
             when (effect) {
-                is WatchlistContract.SideEffect.NavigateToDetail ->
-                    onNavigateToDetail(effect.imdbId)
-                is WatchlistContract.SideEffect.ShowError ->
-                    snackbarHostState.showSnackbar(effect.message)
+                is WatchlistContract.SideEffect.NavigateToDetail -> onNavigateToDetail(effect.imdbId)
+                is WatchlistContract.SideEffect.ShowError -> snackbarHostState.showSnackbar(effect.message)
             }
         }
     }
@@ -67,6 +65,20 @@ fun WatchlistScreen(
         state.error?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    WatchlistContent(
+        state = state,
+        snackbarHostState = snackbarHostState,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WatchlistContent(
+    state: WatchlistContract.UiState,
+    snackbarHostState: SnackbarHostState,
+    eventPublisher: (WatchlistContract.UiEvent) -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Lista za gledanje") })
@@ -99,10 +111,10 @@ fun WatchlistScreen(
                             WatchlistMovieCard(
                                 movie = movie,
                                 onMovieClick = {
-                                    onEvent(WatchlistContract.UiEvent.MovieClicked(movie.imdbId))
+                                    eventPublisher(WatchlistContract.UiEvent.MovieClicked(movie.imdbId))
                                 },
                                 onRemoveClick = {
-                                    onEvent(WatchlistContract.UiEvent.RemoveFromWatchlist(movie.imdbId))
+                                    eventPublisher(WatchlistContract.UiEvent.RemoveFromWatchlist(movie.imdbId))
                                 },
                             )
                         }
@@ -150,7 +162,7 @@ private fun WatchlistMovieCard(
             )
             val meta = listOfNotNull(
                 movie.year?.toString(),
-                movie.imdbRating?.let { "${"%.1f".format(it)} ★" },
+                movie.imdbRating?.let { "${it.format1d()} ★" },
             ).joinToString("  ·  ")
             if (meta.isNotEmpty()) {
                 Text(

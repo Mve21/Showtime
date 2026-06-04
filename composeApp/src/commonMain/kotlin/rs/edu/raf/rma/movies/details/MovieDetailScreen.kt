@@ -58,16 +58,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.koin.compose.viewmodel.koinViewModel
+import rs.edu.raf.rma.core.format1d
 import rs.edu.raf.rma.movies.domain.MovieDetail
 import rs.edu.raf.rma.movies.domain.Person
 
 private const val TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieDetailScreen(
     onBackClick: () -> Unit,
-    viewModel: MovieDetailViewModel = koinViewModel(),
+    viewModel: MovieDetailViewModel,
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -86,13 +86,27 @@ fun MovieDetailScreen(
         state.error?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    MovieDetailContent(
+        state = state,
+        snackbarHostState = snackbarHostState,
+        eventPublisher = viewModel::setEvent,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MovieDetailContent(
+    state: MovieDetailContract.UiState,
+    snackbarHostState: SnackbarHostState,
+    eventPublisher: (MovieDetailContract.UiEvent) -> Unit = {},
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = {
-                        viewModel.setEvent(MovieDetailContract.UiEvent.BackClicked)
+                        eventPublisher(MovieDetailContract.UiEvent.BackClicked)
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -104,7 +118,7 @@ fun MovieDetailScreen(
                 actions = {
                     state.movieDetail?.let { detail ->
                         IconButton(onClick = {
-                            viewModel.setEvent(MovieDetailContract.UiEvent.ToggleWatchlist)
+                            eventPublisher(MovieDetailContract.UiEvent.ToggleWatchlist)
                         }) {
                             Icon(
                                 imageVector = if (detail.isInWatchlist) Icons.Filled.Bookmark
@@ -115,7 +129,7 @@ fun MovieDetailScreen(
                             )
                         }
                         IconButton(onClick = {
-                            viewModel.setEvent(MovieDetailContract.UiEvent.ToggleFavorite)
+                            eventPublisher(MovieDetailContract.UiEvent.ToggleFavorite)
                         }) {
                             Icon(
                                 imageVector = if (detail.isFavorite) Icons.Filled.Favorite
@@ -258,7 +272,7 @@ private fun MovieDetailBody(
                                         modifier = Modifier.size(16.dp),
                                     )
                                     Text(
-                                        text = "${"%.1f".format(rating)} IMDB",
+                                        text = "${rating.format1d()} IMDB",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.SemiBold,
                                         color = Color.White,
@@ -267,7 +281,7 @@ private fun MovieDetailBody(
                             }
                             movieDetail.tmdbRating?.let { rating ->
                                 Text(
-                                    text = "${"%.1f".format(rating)} TMDB",
+                                    text = "${rating.format1d()} TMDB",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.75f),
                                 )

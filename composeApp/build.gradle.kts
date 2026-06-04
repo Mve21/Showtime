@@ -19,16 +19,6 @@ kotlin {
         }
     }
     
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
-        }
-    }
-    
     jvm()
     
     sourceSets {
@@ -109,9 +99,6 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.ktor.client.cio)
         }
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
-        }
     }
 }
 
@@ -151,8 +138,6 @@ dependencies {
     listOf(
         "kspAndroid",
         "kspJvm",
-        "kspIosSimulatorArm64",
-        "kspIosArm64"
     ).forEach {
         add(it, libs.room.compiler)
     }
