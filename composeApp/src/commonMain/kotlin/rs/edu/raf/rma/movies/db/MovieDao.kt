@@ -70,6 +70,9 @@ interface MovieDao {
     @Query("SELECT * FROM movies WHERE posterPath IS NOT NULL")
     suspend fun getMoviesWithImages(): List<MovieEntity>
 
+    @Query("SELECT COUNT(*) FROM movies")
+    suspend fun countMovies(): Int
+
     @Query("SELECT COUNT(*) FROM movies WHERE posterPath IS NOT NULL")
     suspend fun countMoviesWithImages(): Int
 

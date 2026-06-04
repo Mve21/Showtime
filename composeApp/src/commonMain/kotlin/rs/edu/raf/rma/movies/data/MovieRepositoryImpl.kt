@@ -197,6 +197,8 @@ class MovieRepositoryImpl(
     }
 
     override suspend fun bootstrapCatalog() {
+        if (dao.countMovies() >= 200) return
+
         // Dohvatamo 2 stranice po 100 filmova paralelno
         val (page1, page2) = coroutineScope {
             val d1 = async {
